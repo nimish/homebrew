@@ -1,4 +1,5 @@
 require "formula"
+require "amatch"
 require "blacklist"
 
 module Homebrew extend self
@@ -41,6 +42,9 @@ module Homebrew extend self
         if $found == 0 and not blacklisted? query
           puts "No formula found for \"#{query}\". Searching open pull requests..."
           GitHub.find_pull_requests(rx) { |pull| puts pull }
+          puts "Did you mean any of the following?"
+
+          (fuzzy_search_brews query).each_with_index{|it,idx| puts "\t#{idx+1}. #{item}"}
         end
       end
     end
@@ -66,6 +70,13 @@ module Homebrew extend self
     results
   rescue
     []
+  end
+  def fuzzy_search_brews query
+      brews = Formula.names + Formula.aliases
+      q = Amatch::JaroWinkler.new query
+
+      top5 = brews.zip(q.match brews).sort{|x,y| y[1]<=>x[1]}.take(5).map{|x| x[0]}
+
   end
 
   def search_brews rx
